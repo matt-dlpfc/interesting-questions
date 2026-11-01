@@ -123,6 +123,20 @@ Static front end + Netlify Functions for anything server-side. Database / auth p
 
 React + TypeScript, built with Vite, made installable/offline with vite-plugin-pwa. No external fonts or scripts, so it works fully offline. Netlify builds with Node 20.
 
+## D15 — How changes go live: branch → Pull Request → preview → merge
+
+*Decided: 2026-11-01*
+
+- Netlify publishes the **`main`** branch. `main` always equals what's live.
+- **Nobody commits to `main` directly.** Each piece of work gets its own branch (e.g. `feature/invite-codes`, `docs/…`, `fix/…`).
+- When it's ready, a **Pull Request** is opened into `main`. Netlify builds a **Deploy Preview** for it — a temporary address running exactly that version — without touching the live site.
+- The admin checks the preview (ideally on a phone). **Merging the Pull Request is the "publish" button.**
+- If something goes wrong after a merge, roll back to a previous version from the Netlify dashboard (Deploys → pick a deploy → Publish deploy).
+
+**Why not a separate `deploy` branch?** Two long-lived branches drift apart, add an extra sync step every time, and still don't let you see a change working before it's live. Deploy Previews give the same separation more simply.
+
+**Later (Phase 2):** previews must not use the live database. Set up a separate database (and environment variables scoped to "Deploy Previews") before any database feature reaches a Pull Request.
+
 ---
 
 ## Open questions
