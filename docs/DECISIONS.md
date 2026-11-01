@@ -173,6 +173,15 @@ React + TypeScript, built with Vite, made installable/offline with vite-plugin-p
 
 **Why:** saves Free-plan credits on small changes, and keeps half-finished phases off the live site.
 
+## D19 — Shared ratings and suggestions (Phase 2)
+
+*Decided: 2026-11-01*
+
+- **Ratings** are saved on the phone first, then sent when there's a connection (right away, on opening the app, or when the phone comes back online). One rating per member per question: the **most recently given** one wins, even if an older one arrives later.
+- Ratings given on a phone before Phase 2 are uploaded once, the first time that phone enters a code. "Forget this device" stops anything left over from going to the next person's code.
+- **Suggesting a question:** the text (10–300 characters), at least one situation, a depth, and optional topics. Topics are only a hint; the admin sets the final ones at approval (D4). At most 20 suggestions per member waiting for review at once.
+- **Your suggestions** shows each one as "Waiting for review" or "In the pool". Rejected ones simply disappear from the list (D4).
+
 ---
 
 ## Open questions

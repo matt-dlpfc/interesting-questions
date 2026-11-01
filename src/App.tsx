@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { getMe, login, logout } from './api';
+import { getMe, getMySubmissions, login, logout, submitQuestion, type Submission } from './api';
 import {
   DEPTHS,
   SITUATIONS,
@@ -10,23 +10,18 @@ import {
   forgetPool,
   pickReplacement,
   type Depth,
+  type Intensity,
   type LastSeen,
   type Question,
   type Situation,
 } from './questions';
+import { addRating, markRatingsSynced, syncRatings } from './ratings';
 import { load, save } from './storage';
 import { useWakeLock } from './wakeLock';
 
-// A rating given on this device. Kept locally until Phase 2 adds a shared pool.
-interface Rating {
-  questionId: string;
-  rating: number;
-  situation: Situation;
-  at: number;
-}
-
 type Screen =
   | { name: 'home' }
+  | { name: 'suggest' }
   | { name: 'session'; situation: Situation; round: number }
   | { name: 'done'; situation: Situation; count: number };
 
@@ -62,6 +57,7 @@ export default function App() {
   }, []);
 
   async function forgetDevice() {
+    markRatingsSynced();
     await logout();
     lock();
   }
@@ -133,8 +129,20 @@ function Pool({ onForget }: { onForget: () => void }) {
 
   useEffect(() => save('depth', depth), [depth]);
 
+  // Every screen starts at the top, not at the previous screen's scroll position.
   useEffect(() => {
-    fetchPool().then((fresh) => fresh && setPool(fresh));
+    window.scrollTo(0, 0);
+  }, [screen.name]);
+
+  // Catch up whenever there's a connection: new questions in, unsent ratings out.
+  useEffect(() => {
+    const refresh = () => {
+      fetchPool().then((fresh) => fresh && setPool(fresh));
+      void syncRatings();
+    };
+    refresh();
+    window.addEventListener('online', refresh);
+    return () => window.removeEventListener('online', refresh);
   }, []);
 
   const goHome = () => setScreen({ name: 'home' });
@@ -152,6 +160,8 @@ function Pool({ onForget }: { onForget: () => void }) {
       />
     );
   }
+
+  if (screen.name === 'suggest') return <Suggest onBack={goHome} />;
 
   if (screen.name === 'done') {
     return (
@@ -173,7 +183,16 @@ function Pool({ onForget }: { onForget: () => void }) {
     );
   }
 
-  return <Home pool={pool} depth={depth} onDepth={setDepth} onStart={start} onForget={onForget} />;
+  return (
+    <Home
+      pool={pool}
+      depth={depth}
+      onDepth={setDepth}
+      onStart={start}
+      onSuggest={() => setScreen({ name: 'suggest' })}
+      onForget={onForget}
+    />
+  );
 }
 
 function labelFor(situation: Situation): string {
@@ -185,12 +204,14 @@ function Home({
   depth,
   onDepth,
   onStart,
+  onSuggest,
   onForget,
 }: {
   pool: Question[];
   depth: Depth;
   onDepth: (d: Depth) => void;
   onStart: (s: Situation) => void;
+  onSuggest: () => void;
   onForget: () => void;
 }) {
   return (
@@ -236,8 +257,12 @@ function Home({
         </div>
       </section>
 
+      <button className="ghost" onClick={onSuggest}>
+        Suggest a question
+      </button>
+
       <footer className="muted small">
-        <p>Nothing you say is recorded. Ratings stay on this device.</p>
+        <p>Nothing you say is recorded. Ratings are shared anonymously with the group.</p>
         <button className="link-btn" onClick={onForget}>
           Forget this device
         </button>
@@ -280,9 +305,7 @@ function Session({
 
   function commitRating() {
     if (rating === null || !current) return;
-    const all = load<Rating[]>('ratings', []);
-    all.push({ questionId: current.id, rating, situation, at: Date.now() });
-    save('ratings', all);
+    addRating({ questionId: current.id, rating, situation, at: Date.now() });
     setRating(null);
   }
 
@@ -374,6 +397,160 @@ function Session({
           {isLast ? 'Finish' : 'Next →'}
         </button>
       </div>
+    </main>
+  );
+}
+
+const INTENSITY_OPTIONS: { id: Intensity; label: string }[] = [
+  { id: 'light', label: 'Light' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'deep', label: 'Deep' },
+];
+
+// Suggest a question for the pool, and see what happened to earlier suggestions (D4).
+function Suggest({ onBack }: { onBack: () => void }) {
+  const [text, setText] = useState('');
+  const [situations, setSituations] = useState<Situation[]>([]);
+  const [intensity, setIntensity] = useState<Intensity | null>(null);
+  const [topics, setTopics] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [mine, setMine] = useState<Submission[] | 'offline' | null>(null);
+
+  useEffect(() => {
+    getMySubmissions().then((res) => setMine(res.ok ? res.data.submissions : 'offline'));
+  }, []);
+
+  const ready = text.trim().length >= 10 && situations.length > 0 && intensity !== null;
+
+  function toggle(s: Situation) {
+    setSituations(situations.includes(s) ? situations.filter((x) => x !== s) : [...situations, s]);
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!ready || busy || intensity === null) return;
+    setBusy(true);
+    setMessage('');
+    const res = await submitQuestion({
+      text,
+      situations,
+      intensity,
+      suggestedTags: topics
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+    });
+    setBusy(false);
+    if (res.ok) {
+      setText('');
+      setSituations([]);
+      setIntensity(null);
+      setTopics('');
+      setMessage('Thanks! It will appear in sessions once it’s approved.');
+      setMine((prev) => [res.data.submission, ...(Array.isArray(prev) ? prev : [])]);
+    } else if (res.reason === 'offline') setMessage('Can’t reach the server. Check your connection and try again.');
+    else setMessage(res.message ?? 'That didn’t work. Try again.');
+  }
+
+  return (
+    <main className="screen suggest">
+      <header className="session-bar">
+        <button className="ghost small-btn" onClick={onBack}>
+          ← Back
+        </button>
+      </header>
+
+      <form onSubmit={submit}>
+        <h1>Suggest a question</h1>
+        <p className="muted small">Every suggestion is reviewed before it reaches the pool. Nobody sees who wrote it.</p>
+
+        <label htmlFor="suggest-text" className="eyebrow">
+          Question
+        </label>
+        <textarea
+          id="suggest-text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          maxLength={300}
+          rows={3}
+          placeholder="What’s a question you love being asked?"
+        />
+
+        <p id="suggest-who" className="eyebrow">
+          Good for
+        </p>
+        <div className="chips" role="group" aria-labelledby="suggest-who">
+          {SITUATIONS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              aria-pressed={situations.includes(s.id)}
+              className={situations.includes(s.id) ? 'selected' : ''}
+              onClick={() => toggle(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        <p id="suggest-depth" className="eyebrow">
+          How deep?
+        </p>
+        <div className="segmented" role="radiogroup" aria-labelledby="suggest-depth">
+          {INTENSITY_OPTIONS.map((i) => (
+            <button
+              key={i.id}
+              type="button"
+              role="radio"
+              aria-checked={intensity === i.id}
+              className={intensity === i.id ? 'selected' : ''}
+              onClick={() => setIntensity(i.id)}
+            >
+              {i.label}
+            </button>
+          ))}
+        </div>
+
+        <label htmlFor="suggest-topics" className="eyebrow">
+          Topics <span className="optional">Optional</span>
+        </label>
+        <input
+          id="suggest-topics"
+          value={topics}
+          onChange={(e) => setTopics(e.target.value)}
+          placeholder="e.g. childhood, travel"
+          autoCapitalize="none"
+        />
+
+        <p className="small form-message" role="status">
+          {message}
+        </p>
+        <button type="submit" className="primary" disabled={!ready || busy}>
+          {busy ? 'Sending…' : 'Send for review'}
+        </button>
+      </form>
+
+      <section aria-labelledby="mine-label">
+        <p id="mine-label" className="eyebrow">
+          Your suggestions
+        </p>
+        {mine === null && <p className="muted small">Loading…</p>}
+        {mine === 'offline' && <p className="muted small">Can’t load these right now.</p>}
+        {Array.isArray(mine) && mine.length === 0 && <p className="muted small">None yet.</p>}
+        {Array.isArray(mine) && mine.length > 0 && (
+          <ul className="submissions">
+            {mine.map((s) => (
+              <li key={s.id}>
+                <span>{s.text}</span>
+                <span className={`status ${s.status}`}>
+                  {s.status === 'approved' ? 'In the pool' : 'Waiting for review'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }
