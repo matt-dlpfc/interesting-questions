@@ -4,7 +4,7 @@
 - Repository, README, licenses, decision log
 - Starter question set (~30) in `content/questions.json`
 
-## Phase 1 — The core moment ✅ built (deploy pending)
+## Phase 1 — The core moment ✅ deployed on Netlify
 - Pick a theme → ~5 questions, one at a time → skip / rate 1–10 / next / leave
 - Questions come from `content/questions.json`; ratings stored only on the device
 - Mobile-first, big text, dark mode, keeps the screen awake
