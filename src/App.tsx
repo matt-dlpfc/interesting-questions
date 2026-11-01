@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { getMe, getMySubmissions, login, logout, submitQuestion, type Submission } from './api';
+import { Admin } from './Admin';
+import { getMe, getMySubmissions, login, logout, submitQuestion, type Me, type Submission } from './api';
+import { IntensityPicker, SituationChips, parseTopics } from './pickers';
 import {
   DEPTHS,
   SITUATIONS,
@@ -22,6 +24,7 @@ import { useWakeLock } from './wakeLock';
 type Screen =
   | { name: 'home' }
   | { name: 'suggest' }
+  | { name: 'admin' }
   | { name: 'session'; situation: Situation; round: number }
   | { name: 'done'; situation: Situation; count: number };
 
@@ -31,6 +34,7 @@ type Access = 'checking' | 'locked' | 'in';
 export default function App() {
   const [access, setAccess] = useState<Access>(() => (load<boolean>('member', false) ? 'in' : 'checking'));
   const [offline, setOffline] = useState(false);
+  const [me, setMe] = useState<Me | null>(null);
 
   function lock() {
     save('member', false);
@@ -45,26 +49,42 @@ export default function App() {
   }
 
   // Re-check in the background: a revoked code locks the device, but being offline doesn't.
+  async function checkMe() {
+    const res = await getMe();
+    if (res.ok) {
+      setMe(res.data);
+      enter();
+    } else if (res.reason === 'unauthorized') lock();
+    else if (!load<boolean>('member', false)) {
+      setOffline(true);
+      setAccess('locked');
+    }
+  }
+
   useEffect(() => {
-    getMe().then((res) => {
-      if (res.ok) enter();
-      else if (res.reason === 'unauthorized') lock();
-      else if (!load<boolean>('member', false)) {
-        setOffline(true);
-        setAccess('locked');
-      }
-    });
+    void checkMe();
   }, []);
 
   async function forgetDevice() {
     markRatingsSynced();
     await logout();
+    setMe(null);
     lock();
   }
 
   if (access === 'checking') return <main className="screen" aria-busy="true" />;
-  if (access === 'locked') return <CodeGate offline={offline} onEnter={enter} />;
-  return <Pool onForget={forgetDevice} />;
+  if (access === 'locked') {
+    return (
+      <CodeGate
+        offline={offline}
+        onEnter={() => {
+          enter();
+          void checkMe();
+        }}
+      />
+    );
+  }
+  return <Pool me={me} onRefreshMe={checkMe} onForget={forgetDevice} />;
 }
 
 function CodeGate({ offline, onEnter }: { offline: boolean; onEnter: () => void }) {
@@ -122,7 +142,7 @@ function CodeGate({ offline, onEnter }: { offline: boolean; onEnter: () => void 
   );
 }
 
-function Pool({ onForget }: { onForget: () => void }) {
+function Pool({ me, onRefreshMe, onForget }: { me: Me | null; onRefreshMe: () => void; onForget: () => void }) {
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [depth, setDepth] = useState<Depth>(() => load<Depth>('depth', 'mixed'));
   const [pool, setPool] = useState<Question[]>(cachedPool);
@@ -135,11 +155,12 @@ function Pool({ onForget }: { onForget: () => void }) {
   }, [screen.name]);
 
   // Catch up whenever there's a connection: new questions in, unsent ratings out.
+  const refresh = () => {
+    fetchPool().then((fresh) => fresh && setPool(fresh));
+    void syncRatings();
+  };
+
   useEffect(() => {
-    const refresh = () => {
-      fetchPool().then((fresh) => fresh && setPool(fresh));
-      void syncRatings();
-    };
     refresh();
     window.addEventListener('online', refresh);
     return () => window.removeEventListener('online', refresh);
@@ -162,6 +183,19 @@ function Pool({ onForget }: { onForget: () => void }) {
   }
 
   if (screen.name === 'suggest') return <Suggest onBack={goHome} />;
+
+  if (screen.name === 'admin') {
+    return (
+      <Admin
+        onBack={() => {
+          // Approved questions join the pool, and the badge count changes.
+          refresh();
+          onRefreshMe();
+          goHome();
+        }}
+      />
+    );
+  }
 
   if (screen.name === 'done') {
     return (
@@ -190,6 +224,8 @@ function Pool({ onForget }: { onForget: () => void }) {
       onDepth={setDepth}
       onStart={start}
       onSuggest={() => setScreen({ name: 'suggest' })}
+      onAdmin={me?.isAdmin ? () => setScreen({ name: 'admin' }) : undefined}
+      pendingCount={me?.pendingCount ?? 0}
       onForget={onForget}
     />
   );
@@ -205,6 +241,8 @@ function Home({
   onDepth,
   onStart,
   onSuggest,
+  onAdmin,
+  pendingCount,
   onForget,
 }: {
   pool: Question[];
@@ -212,6 +250,8 @@ function Home({
   onDepth: (d: Depth) => void;
   onStart: (s: Situation) => void;
   onSuggest: () => void;
+  onAdmin?: () => void;
+  pendingCount: number;
   onForget: () => void;
 }) {
   return (
@@ -260,6 +300,13 @@ function Home({
       <button className="ghost" onClick={onSuggest}>
         Suggest a question
       </button>
+
+      {onAdmin && (
+        <button className="ghost" onClick={onAdmin}>
+          Admin
+          {pendingCount > 0 && <span className="badge">{pendingCount} pending</span>}
+        </button>
+      )}
 
       <footer className="muted small">
         <p>Nothing you say is recorded. Ratings are shared anonymously with the group.</p>
@@ -401,12 +448,6 @@ function Session({
   );
 }
 
-const INTENSITY_OPTIONS: { id: Intensity; label: string }[] = [
-  { id: 'light', label: 'Light' },
-  { id: 'medium', label: 'Medium' },
-  { id: 'deep', label: 'Deep' },
-];
-
 // Suggest a question for the pool, and see what happened to earlier suggestions (D4).
 function Suggest({ onBack }: { onBack: () => void }) {
   const [text, setText] = useState('');
@@ -423,10 +464,6 @@ function Suggest({ onBack }: { onBack: () => void }) {
 
   const ready = text.trim().length >= 10 && situations.length > 0 && intensity !== null;
 
-  function toggle(s: Situation) {
-    setSituations(situations.includes(s) ? situations.filter((x) => x !== s) : [...situations, s]);
-  }
-
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!ready || busy || intensity === null) return;
@@ -436,10 +473,7 @@ function Suggest({ onBack }: { onBack: () => void }) {
       text,
       situations,
       intensity,
-      suggestedTags: topics
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
+      suggestedTags: parseTopics(topics),
     });
     setBusy(false);
     if (res.ok) {
@@ -480,37 +514,12 @@ function Suggest({ onBack }: { onBack: () => void }) {
         <p id="suggest-who" className="eyebrow">
           Good for
         </p>
-        <div className="chips" role="group" aria-labelledby="suggest-who">
-          {SITUATIONS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              aria-pressed={situations.includes(s.id)}
-              className={situations.includes(s.id) ? 'selected' : ''}
-              onClick={() => toggle(s.id)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+        <SituationChips labelId="suggest-who" value={situations} onChange={setSituations} />
 
         <p id="suggest-depth" className="eyebrow">
           How deep?
         </p>
-        <div className="segmented" role="radiogroup" aria-labelledby="suggest-depth">
-          {INTENSITY_OPTIONS.map((i) => (
-            <button
-              key={i.id}
-              type="button"
-              role="radio"
-              aria-checked={intensity === i.id}
-              className={intensity === i.id ? 'selected' : ''}
-              onClick={() => setIntensity(i.id)}
-            >
-              {i.label}
-            </button>
-          ))}
-        </div>
+        <IntensityPicker labelId="suggest-depth" value={intensity} onChange={setIntensity} />
 
         <label htmlFor="suggest-topics" className="eyebrow">
           Topics <span className="optional">Optional</span>

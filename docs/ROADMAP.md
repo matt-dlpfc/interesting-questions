@@ -12,7 +12,7 @@
 - Deployed on Netlify
 - No database and no gate yet — nothing private to protect
 
-## Phase 2 — The pool
+## Phase 2 — The pool ✅ built (live once published — see D18)
 - Invite codes + "remember this device" + soft slowdown on failed attempts
 - Database; starter questions imported into it
 - Shared ratings (one per member per question)

@@ -8,15 +8,15 @@ When a conversation is stalling, someone says *"want to play the questions game?
 
 ## Status
 
-🌱 Phase 1 — the core session works: pick who you're with and how deep, get ~5 questions one at a time, swap / rate / finish. Works offline and can be added to a phone's home screen. Ratings stay on the device.
+🌳 Phase 2 — the shared pool: invite codes, shared ratings, suggesting questions, and an admin screen for approvals and codes. Sessions still work offline and the app can be added to a phone's home screen.
 
 See [docs/DECISIONS.md](docs/DECISIONS.md) for the product decisions and [docs/ROADMAP.md](docs/ROADMAP.md) for the phases.
 
-## How it works (planned)
+## How it works
 
 - **Invite-only.** Access is by a personal invite code. No accounts, no email, no personal data.
 - **One shared pool of questions.** Everyone who's in contributes to the same pool. New questions wait for admin approval before going live.
-- **Themes and playlists.** Questions are tagged by *topic*, *situation* and *intensity*; a session pulls ~5 questions that fit the chosen theme.
+- **Themes.** Questions are tagged by *topic*, *situation* and *intensity*; a session pulls ~5 questions that fit who you're with and how deep you want to go. (Playlists come in Phase 3.)
 - **One phone per session.** Show it to the table, pass it around.
 
 ## Running it locally

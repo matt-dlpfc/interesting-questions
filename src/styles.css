@@ -366,3 +366,111 @@ h1 {
   background: var(--accent);
   color: var(--accent-text);
 }
+
+/* Admin */
+
+.badge {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.admin h1 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.8rem;
+}
+
+.segmented.two {
+  grid-template-columns: 1fr 1fr;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.card .eyebrow {
+  margin-top: 16px;
+}
+
+.card .eyebrow:first-child {
+  margin-top: 0;
+}
+
+.card input,
+.card textarea,
+.card .chips button,
+.card .segmented button {
+  background: var(--bg);
+}
+
+.card .chips button.selected,
+.card .segmented button.selected {
+  background: var(--accent);
+}
+
+.new-code {
+  border-color: var(--accent);
+  gap: 10px;
+}
+
+.new-code .eyebrow {
+  margin: 0;
+}
+
+.code {
+  margin: 0;
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 1.4rem;
+  word-break: break-all;
+  user-select: all;
+}
+
+.new-code p.muted {
+  margin: 0;
+}
+
+.invites {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invites li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.invites li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.invites li.revoked > div > span:first-child {
+  color: var(--muted);
+  text-decoration: line-through;
+}

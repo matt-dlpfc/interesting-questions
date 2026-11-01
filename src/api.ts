@@ -25,11 +25,12 @@ async function call<T>(path: string, init?: RequestInit): Promise<Result<T>> {
 
 export interface Me {
   isAdmin: boolean;
+  pendingCount: number;
 }
 
 export const getMe = () => call<Me>('/api/me');
 
-export const login = (code: string) => call<Me>('/api/login', { method: 'POST', body: JSON.stringify({ code }) });
+export const login = (code: string) => call<{ isAdmin: boolean }>('/api/login', { method: 'POST', body: JSON.stringify({ code }) });
 
 export const logout = () => call<{ ok: true }>('/api/logout', { method: 'POST' });
 
@@ -56,3 +57,49 @@ export const getMySubmissions = () => call<{ submissions: Submission[] }>('/api/
 
 export const submitQuestion = (submission: NewSubmission) =>
   call<{ submission: Submission }>('/api/submissions', { method: 'POST', body: JSON.stringify(submission) });
+
+// Admin only (D3, D4).
+
+export interface PendingQuestion {
+  id: string;
+  text: string;
+  situations: Situation[];
+  intensity: Intensity;
+  suggested_tags: string[];
+  created_at: string;
+}
+
+export interface Approval {
+  text: string;
+  situations: Situation[];
+  intensity: Intensity;
+  topics: string[];
+}
+
+export interface Invite {
+  id: number;
+  note: string;
+  created_at: string;
+  revoked_at: string | null;
+}
+
+export const getQueue = () => call<{ questions: PendingQuestion[] }>('/api/admin/questions');
+
+export const approveQuestion = (id: string, approval: Approval) =>
+  call<{ ok: true }>(`/api/admin/questions/${encodeURIComponent(id)}`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'approve', ...approval }),
+  });
+
+export const hideQuestion = (id: string) =>
+  call<{ ok: true }>(`/api/admin/questions/${encodeURIComponent(id)}`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'hide' }),
+  });
+
+export const getInvites = () => call<{ codes: Invite[] }>('/api/admin/codes');
+
+export const createInvite = (note: string) =>
+  call<{ code: string; invite: Invite }>('/api/admin/codes', { method: 'POST', body: JSON.stringify({ note }) });
+
+export const revokeInvite = (id: number) => call<{ ok: true }>(`/api/admin/codes/${id}/revoke`, { method: 'POST' });
