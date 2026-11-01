@@ -16,6 +16,7 @@
   "devDependencies": {
     "@netlify/functions": "^6.0.3",
     "@netlify/vite-plugin": "^3.0.1",
+    "@types/node": "^20.19.43",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.5.2",
