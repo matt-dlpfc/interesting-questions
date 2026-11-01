@@ -21,24 +21,41 @@ See [docs/DECISIONS.md](docs/DECISIONS.md) for the product decisions and [docs/R
 
 ## Running it locally
 
-Needs [Node.js](https://nodejs.org) 20 or newer.
+Needs [Node.js](https://nodejs.org) 20.12 or newer.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Then open the address it prints. `npm run build` produces the deployable site in `dist/`.
+Then open the address it prints. `npm run dev` also runs the API functions and a local database. The first time, and after pulling new migrations, apply them to the local database while the dev server is running:
+
+```bash
+npx netlify database migrations apply
+```
+
+`npm run build` produces the deployable site in `dist/`.
 
 ## Adding or editing questions
 
 Edit [content/questions.json](content/questions.json). Each question needs a unique `id`, the `text`, one or more `topics`, one or more `situations` (from the fixed list at the top of the file) and an `intensity` (`light`, `medium` or `deep`).
+
+The live app reads questions from the database, which was seeded from this file. To bring later edits across, generate a new migration (never edit one that has already been deployed):
+
+```bash
+node scripts/gen-starter-migration.mjs 20270101120000_update_starter_questions
+```
+
+Its `ON CONFLICT DO NOTHING` only adds new questions; changing an existing one needs a hand-written `UPDATE` migration.
 
 ## Repository layout
 
 ```
 content/questions.json   starter questions (public, open-licensed)
 src/                     the app (React + TypeScript, built with Vite)
+netlify/functions/       the API (Netlify Functions)
+netlify/database/        database migrations, applied automatically on deploy
+scripts/                 helper scripts
 public/                  icons
 docs/DECISIONS.md        why things are the way they are
 docs/ROADMAP.md          phases

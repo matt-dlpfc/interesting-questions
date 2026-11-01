@@ -137,9 +137,21 @@ React + TypeScript, built with Vite, made installable/offline with vite-plugin-p
 
 **Later (Phase 2):** previews must not use the live database. Set up a separate database (and environment variables scoped to "Deploy Previews") before any database feature reaches a Pull Request.
 
+## D16 — Database: Netlify Database (Postgres), plain SQL
+
+*Decided: 2026-11-01*
+
+- **Netlify Database** (managed Postgres via `@netlify/database`). It runs on the Free plan's monthly credits.
+- Every Deploy Preview automatically gets its **own copy of the database** (a branch), so previews never touch live data (meets D15). Previews are team-protected, which matters because a branch starts as a copy of production data.
+- Schema changes are **migration files** in `netlify/database/migrations/`, applied automatically on deploy. A migration that has been deployed is never edited — a new one corrects it.
+- Queries are plain SQL (no ORM): the schema is small and stays readable.
+- The starter questions were imported into the database by a migration. `content/questions.json` remains the public source for them, and the app falls back to it on a device that has never been online.
+- Login is our own invite-code check (D1) on top of this database, not a separate auth provider. Adding real accounts later (D6) would mean adding one.
+
+**Why not Supabase?** Its free tier pauses after a week of no use, and keeping previews off the live data would take manual setup.
+
 ---
 
 ## Open questions
 
-- Which database/auth provider for Phase 2 (candidates: Supabase, Neon / Netlify DB, Netlify Blobs).
 - What exactly ratings influence (ranking within a theme? hiding low-rated questions?).

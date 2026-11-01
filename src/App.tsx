@@ -3,7 +3,9 @@ import {
   DEPTHS,
   SITUATIONS,
   buildSession,
+  cachedPool,
   candidates,
+  fetchPool,
   pickReplacement,
   type Depth,
   type LastSeen,
@@ -29,8 +31,13 @@ type Screen =
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [depth, setDepth] = useState<Depth>(() => load<Depth>('depth', 'mixed'));
+  const [pool, setPool] = useState<Question[]>(cachedPool);
 
   useEffect(() => save('depth', depth), [depth]);
+
+  useEffect(() => {
+    fetchPool().then((fresh) => fresh && setPool(fresh));
+  }, []);
 
   const goHome = () => setScreen({ name: 'home' });
   const start = (situation: Situation) => setScreen({ name: 'session', situation, round: Date.now() });
@@ -39,6 +46,7 @@ export default function App() {
     return (
       <Session
         key={screen.round}
+        pool={pool}
         situation={screen.situation}
         depth={depth}
         onLeave={goHome}
@@ -67,7 +75,7 @@ export default function App() {
     );
   }
 
-  return <Home depth={depth} onDepth={setDepth} onStart={start} />;
+  return <Home pool={pool} depth={depth} onDepth={setDepth} onStart={start} />;
 }
 
 function labelFor(situation: Situation): string {
@@ -75,10 +83,12 @@ function labelFor(situation: Situation): string {
 }
 
 function Home({
+  pool,
   depth,
   onDepth,
   onStart,
 }: {
+  pool: Question[];
   depth: Depth;
   onDepth: (d: Depth) => void;
   onStart: (s: Situation) => void;
@@ -115,7 +125,7 @@ function Home({
         </p>
         <div className="situations">
           {SITUATIONS.map((s) => {
-            const empty = candidates(s.id, depth).length === 0;
+            const empty = candidates(pool, s.id, depth).length === 0;
             return (
               <button key={s.id} className="situation" disabled={empty} onClick={() => onStart(s.id)}>
                 {s.label}
@@ -132,18 +142,20 @@ function Home({
 }
 
 function Session({
+  pool,
   situation,
   depth,
   onLeave,
   onDone,
 }: {
+  pool: Question[];
   situation: Situation;
   depth: Depth;
   onLeave: () => void;
   onDone: (count: number) => void;
 }) {
   const [questions, setQuestions] = useState<Question[]>(() =>
-    buildSession(situation, depth, load<LastSeen>('lastSeen', {})),
+    buildSession(pool, situation, depth, load<LastSeen>('lastSeen', {})),
   );
   const [index, setIndex] = useState(0);
   const [rating, setRating] = useState<number | null>(null);
@@ -177,7 +189,7 @@ function Session({
 
   function swap() {
     commitRating();
-    const replacement = pickReplacement(situation, depth, current, used.current, load<LastSeen>('lastSeen', {}));
+    const replacement = pickReplacement(pool, situation, depth, current, used.current, load<LastSeen>('lastSeen', {}));
     if (replacement) {
       used.current.add(replacement.id);
       setQuestions(questions.map((q, i) => (i === index ? replacement : q)));
