@@ -8,7 +8,7 @@ When a conversation is stalling, someone says *"want to play the questions game?
 
 ## Status
 
-🌱 Phase 0 — foundation. No app code yet.
+🌱 Phase 1 — the core session works: pick who you're with and how deep, get ~5 questions one at a time, swap / rate / finish. Works offline and can be added to a phone's home screen. Ratings stay on the device.
 
 See [docs/DECISIONS.md](docs/DECISIONS.md) for the product decisions and [docs/ROADMAP.md](docs/ROADMAP.md) for the phases.
 
@@ -19,12 +19,30 @@ See [docs/DECISIONS.md](docs/DECISIONS.md) for the product decisions and [docs/R
 - **Themes and playlists.** Questions are tagged by *topic*, *situation* and *intensity*; a session pulls ~5 questions that fit the chosen theme.
 - **One phone per session.** Show it to the table, pass it around.
 
+## Running it locally
+
+Needs [Node.js](https://nodejs.org) 20 or newer.
+
+```bash
+npm install
+npm run dev
+```
+
+Then open the address it prints. `npm run build` produces the deployable site in `dist/`.
+
+## Adding or editing questions
+
+Edit [content/questions.json](content/questions.json). Each question needs a unique `id`, the `text`, one or more `topics`, one or more `situations` (from the fixed list at the top of the file) and an `intensity` (`light`, `medium` or `deep`).
+
 ## Repository layout
 
 ```
 content/questions.json   starter questions (public, open-licensed)
+src/                     the app (React + TypeScript, built with Vite)
+public/                  icons
 docs/DECISIONS.md        why things are the way they are
 docs/ROADMAP.md          phases
+netlify.toml             hosting settings
 ```
 
 Questions contributed by members through the app live in the app's database, **not** in this repository.

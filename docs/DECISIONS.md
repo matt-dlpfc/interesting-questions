@@ -107,11 +107,25 @@ Starter questions are original (not copied from commercial card games) and live 
 
 Static front end + Netlify Functions for anything server-side. Database / auth provider to be chosen at Phase 2.
 
+## D13 — How a session picks and orders questions (Phase 1)
+
+*Decided: 2026-11-01*
+
+- The start screen asks **who you're with** (a situation) and **how deep** (Light = light only, Mixed = all, Deep = medium + deep). Depth is remembered on the device. Tapping a situation starts the session straight away.
+- Questions this device has seen least recently are picked first, so rounds don't repeat until the pool runs out.
+- The picked questions are shown **light → medium → deep**, so the conversation warms up.
+- **Swap** replaces the current question with another of the same intensity if possible, and doesn't use up one of the five. If nothing is left to swap in, the question is dropped.
+- A rating is saved when you move on (Next, Swap or Leave). Tapping the selected number again clears it.
+
+## D14 — Stack
+
+*Decided: 2026-11-01*
+
+React + TypeScript, built with Vite, made installable/offline with vite-plugin-pwa. No external fonts or scripts, so it works fully offline. Netlify builds with Node 20.
+
 ---
 
 ## Open questions
 
 - Which database/auth provider for Phase 2 (candidates: Supabase, Neon / Netlify DB, Netlify Blobs).
 - What exactly ratings influence (ranking within a theme? hiding low-rated questions?).
-- How a session orders intensity (always light → deep? mixed?).
-- Avoid repeating questions a member has seen recently?
