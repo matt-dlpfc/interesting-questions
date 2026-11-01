@@ -87,7 +87,7 @@ function Home({
     <main className="screen home">
       <header>
         <h1>Interesting Questions</h1>
-        <p className="muted">A few good questions, one at a time.</p>
+        <p className="muted">One at a time.</p>
       </header>
 
       <section aria-labelledby="depth-label">
