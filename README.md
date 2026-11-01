@@ -28,7 +28,7 @@ npm install
 npm run dev
 ```
 
-Then open the address it prints. `npm run dev` also runs the API functions and a local database. The first time, and after pulling new migrations, apply them to the local database while the dev server is running:
+Copy `.env.example` to `.env` first (the local admin code is in it). Then open the address it prints. `npm run dev` also runs the API functions and a local database. The first time, and after pulling new migrations, apply them to the local database while the dev server is running:
 
 ```bash
 npx netlify database migrations apply
@@ -66,7 +66,7 @@ Questions contributed by members through the app live in the app's database, **n
 
 ## Secrets
 
-This repository is public. **No secret ever goes in it** — invite codes, admin codes and database credentials live only in the hosting provider's environment settings. If you fork this, see `.env.example` (coming with Phase 2) for what you need to set.
+This repository is public. **No secret ever goes in it** — invite codes, admin codes and database credentials live only in the hosting provider's environment settings. If you fork this, see [.env.example](.env.example) for what you need to set.
 
 ## License
 

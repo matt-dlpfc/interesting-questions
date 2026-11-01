@@ -88,6 +88,31 @@ button.selected {
   font-weight: 600;
 }
 
+input {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button.link-btn {
+  min-height: 40px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  text-decoration: underline;
+  font-size: inherit;
+}
+
 h1 {
   margin: 0;
   line-height: 1.2;
@@ -120,13 +145,36 @@ h1 {
   gap: 28px;
 }
 
+/* Code gate */
+
+.gate header {
+  margin-top: 12vh;
+}
+
+.gate form {
+  display: flex;
+  flex-direction: column;
+}
+
+.gate-message {
+  min-height: 1.5em;
+  margin: 10px 0;
+}
+
+.gate footer {
+  margin-top: auto;
+  text-align: center;
+}
+
 /* Home */
 
+.gate header h1,
 .home header h1 {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 2rem;
 }
 
+.gate header p,
 .home header p {
   margin: 6px 0 0;
 }
@@ -152,6 +200,10 @@ h1 {
 .home footer {
   margin-top: auto;
   text-align: center;
+}
+
+.home footer p {
+  margin: 0 0 4px;
 }
 
 /* Session */

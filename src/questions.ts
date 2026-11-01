@@ -1,4 +1,5 @@
 import data from '../content/questions.json';
+import { getQuestions } from './api';
 import { load, save } from './storage';
 
 export type Intensity = 'light' | 'medium' | 'deep';
@@ -51,18 +52,17 @@ export function cachedPool(): Question[] {
   return cached.length > 0 ? cached : STARTER;
 }
 
-// Fetches the shared pool and caches it. Returns null when offline or the server is unavailable.
+// Fetches the shared pool and caches it. Returns null when signed out, offline or the server is unavailable.
 export async function fetchPool(): Promise<Question[] | null> {
-  try {
-    const res = await fetch('/api/questions');
-    if (!res.ok) return null;
-    const { questions } = (await res.json()) as { questions: Question[] };
-    if (questions.length === 0) return null;
-    save('pool', questions);
-    return questions;
-  } catch {
-    return null;
-  }
+  const res = await getQuestions();
+  if (!res.ok || res.data.questions.length === 0) return null;
+  save('pool', res.data.questions);
+  return res.data.questions;
+}
+
+// Signing out drops the cached pool: it can hold members' questions.
+export function forgetPool(): void {
+  save('pool', []);
 }
 
 export function candidates(pool: Question[], situation: Situation, depth: Depth): Question[] {

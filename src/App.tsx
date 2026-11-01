@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { getMe, login, logout } from './api';
 import {
   DEPTHS,
   SITUATIONS,
@@ -6,6 +7,7 @@ import {
   cachedPool,
   candidates,
   fetchPool,
+  forgetPool,
   pickReplacement,
   type Depth,
   type LastSeen,
@@ -28,7 +30,103 @@ type Screen =
   | { name: 'session'; situation: Situation; round: number }
   | { name: 'done'; situation: Situation; count: number };
 
+// 'checking' only shows on a device that has never entered a code; a remembered one opens straight away.
+type Access = 'checking' | 'locked' | 'in';
+
 export default function App() {
+  const [access, setAccess] = useState<Access>(() => (load<boolean>('member', false) ? 'in' : 'checking'));
+  const [offline, setOffline] = useState(false);
+
+  function lock() {
+    save('member', false);
+    forgetPool();
+    setAccess('locked');
+  }
+
+  function enter() {
+    save('member', true);
+    setOffline(false);
+    setAccess('in');
+  }
+
+  // Re-check in the background: a revoked code locks the device, but being offline doesn't.
+  useEffect(() => {
+    getMe().then((res) => {
+      if (res.ok) enter();
+      else if (res.reason === 'unauthorized') lock();
+      else if (!load<boolean>('member', false)) {
+        setOffline(true);
+        setAccess('locked');
+      }
+    });
+  }, []);
+
+  async function forgetDevice() {
+    await logout();
+    lock();
+  }
+
+  if (access === 'checking') return <main className="screen" aria-busy="true" />;
+  if (access === 'locked') return <CodeGate offline={offline} onEnter={enter} />;
+  return <Pool onForget={forgetDevice} />;
+}
+
+function CodeGate({ offline, onEnter }: { offline: boolean; onEnter: () => void }) {
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(offline ? 'You’re offline. Connect to enter your code.' : '');
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!code.trim() || busy) return;
+    setBusy(true);
+    setMessage('');
+    const res = await login(code);
+    setBusy(false);
+    if (res.ok) onEnter();
+    else if (res.reason === 'offline') setMessage('Can’t reach the server. Check your connection and try again.');
+    else setMessage('That code didn’t work. Check it and try again.');
+  }
+
+  return (
+    <main className="screen gate">
+      <header>
+        <h1>Interesting Questions</h1>
+        <p className="muted">Enter your invite code.</p>
+      </header>
+
+      <form onSubmit={submit}>
+        <label htmlFor="code" className="eyebrow">
+          Invite code
+        </label>
+        <input
+          id="code"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="e.g. tiger-ferry-lamp-42"
+          autoComplete="off"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="go"
+          aria-describedby="code-message"
+        />
+        <p id="code-message" className="small gate-message" role="status">
+          {message}
+        </p>
+        <button type="submit" className="primary" disabled={busy || !code.trim()}>
+          {busy ? 'Checking…' : 'Enter'}
+        </button>
+      </form>
+
+      <footer className="muted small">
+        Codes are personal. This device will remember yours. Lost it? Ask whoever invited you.
+      </footer>
+    </main>
+  );
+}
+
+function Pool({ onForget }: { onForget: () => void }) {
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [depth, setDepth] = useState<Depth>(() => load<Depth>('depth', 'mixed'));
   const [pool, setPool] = useState<Question[]>(cachedPool);
@@ -75,7 +173,7 @@ export default function App() {
     );
   }
 
-  return <Home pool={pool} depth={depth} onDepth={setDepth} onStart={start} />;
+  return <Home pool={pool} depth={depth} onDepth={setDepth} onStart={start} onForget={onForget} />;
 }
 
 function labelFor(situation: Situation): string {
@@ -87,11 +185,13 @@ function Home({
   depth,
   onDepth,
   onStart,
+  onForget,
 }: {
   pool: Question[];
   depth: Depth;
   onDepth: (d: Depth) => void;
   onStart: (s: Situation) => void;
+  onForget: () => void;
 }) {
   return (
     <main className="screen home">
@@ -136,7 +236,12 @@ function Home({
         </div>
       </section>
 
-      <footer className="muted small">Nothing you say is recorded. Ratings stay on this device.</footer>
+      <footer className="muted small">
+        <p>Nothing you say is recorded. Ratings stay on this device.</p>
+        <button className="link-btn" onClick={onForget}>
+          Forget this device
+        </button>
+      </footer>
     </main>
   );
 }

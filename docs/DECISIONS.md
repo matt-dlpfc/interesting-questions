@@ -150,6 +150,18 @@ React + TypeScript, built with Vite, made installable/offline with vite-plugin-p
 
 **Why not Supabase?** Its free tier pauses after a week of no use, and keeping previews off the live data would take manual setup.
 
+## D17 — How the invite-code gate works
+
+*Decided: 2026-11-01*
+
+- **The whole app is behind the code screen.** Without a code you see only that screen. (The 30 starter questions are public in the repository anyway; member questions are not.)
+- **Codes** look like `tiger-ferry-lamp-42`. Capitals, spaces and underscores don't matter. They are stored only as a keyed hash (HMAC-SHA256 with a secret key, `CODE_PEPPER`).
+- **The admin's code** is the `ADMIN_CODE` environment variable, not a database row. Changing it signs the admin out everywhere.
+- **"Remember this device"** is automatic: a successful code sets a signed, HttpOnly cookie for a year. Every request re-checks that the member's code hasn't been revoked, so revoking a code locks that person out at once. "Forget this device" on the home screen signs the device out; the code keeps working.
+- **Offline:** a device that has entered a code before opens straight away and runs on the questions it last downloaded. The server check happens in the background.
+- **Soft slowdown:** each failed attempt in the last 15 minutes, from anyone, adds 0.4 s to the next check (up to 5 s). Failures are logged with a time only — no IP or device details.
+- **Secrets:** `ADMIN_CODE`, `CODE_PEPPER` and `SESSION_SECRET` live in Netlify's environment variables, with different values for Production and Deploy Previews. See `.env.example`.
+
 ---
 
 ## Open questions
