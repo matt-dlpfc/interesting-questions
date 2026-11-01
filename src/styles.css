@@ -113,7 +113,8 @@ h1 {
   max-width: 560px;
   margin: 0 auto;
   min-height: 100%;
-  padding: max(24px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+  /* Bottom room for the "Powered by Netlify" badge (64px, fixed bottom-right) so it never covers a button. */
+  padding: max(24px, env(safe-area-inset-top)) 16px calc(76px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 28px;
