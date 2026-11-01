@@ -182,6 +182,15 @@ React + TypeScript, built with Vite, made installable/offline with vite-plugin-p
 - **Suggesting a question:** the text (10–300 characters), at least one situation, a depth, and optional topics. Topics are only a hint; the admin sets the final ones at approval (D4). At most 20 suggestions per member waiting for review at once.
 - **Your suggestions** shows each one as "Waiting for review" or "In the pool". Rejected ones simply disappear from the list (D4).
 
+## D20 — The admin screen
+
+*Decided: 2026-11-01*
+
+- Only the admin sees the **Admin** button on the home screen, with a "N pending" badge when suggestions are waiting.
+- **Review:** suggestions are listed oldest first. The admin can fix the text, situations, depth and topics, then **Approve** (it joins everyone's pool) or **Hide** (it disappears from the submitter's list; nothing is deleted).
+- **Invite codes:** each new code gets its own anonymous member and a private note (e.g. who it's for). The code is shown **once**, with a Copy button, because only its hash is stored. A lost code is revoked and replaced, not recovered.
+- **Revoking** asks for confirmation, then signs that person out on their next connection.
+
 ---
 
 ## Open questions

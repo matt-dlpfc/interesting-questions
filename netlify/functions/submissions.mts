@@ -3,10 +3,9 @@ import { getDatabase } from '@netlify/database';
 import type { Config } from '@netlify/functions';
 import { currentMember, type Member } from '../lib/auth.ts';
 import { error, json } from '../lib/http.ts';
-import { INTENSITIES, SITUATIONS } from '../lib/taxonomy.ts';
+import { cleanTopics, parseQuestionFields } from '../lib/taxonomy.ts';
 
 const MAX_PENDING = 20;
-const MAX_TAGS = 5;
 
 // A member's own suggestions (GET) and suggesting a new one (POST). See D4.
 export default async (req: Request) => {
@@ -33,23 +32,12 @@ async function mine(member: Member) {
 async function submit(member: Member, req: Request) {
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
 
-  const text = typeof body?.text === 'string' ? body.text.replace(/\s+/g, ' ').trim() : '';
-  if (text.length < 10 || text.length > 300) return error(400, 'A question should be 10–300 characters');
-
-  const situations = Array.isArray(body?.situations) ? [...new Set(body.situations)] : [];
-  if (situations.length === 0 || !situations.every((s) => SITUATIONS.includes(s as string))) {
-    return error(400, 'Pick at least one situation');
-  }
-
-  const intensity = body?.intensity;
-  if (typeof intensity !== 'string' || !INTENSITIES.includes(intensity)) return error(400, 'Pick how deep it is');
+  const fields = parseQuestionFields(body);
+  if (typeof fields === 'string') return error(400, fields);
+  const { text, situations, intensity } = fields;
 
   // Suggested topics are only a hint: the admin sets the final ones at approval.
-  const tags = (Array.isArray(body?.suggestedTags) ? body.suggestedTags : [])
-    .filter((t): t is string => typeof t === 'string')
-    .map((t) => t.toLowerCase().replace(/[^a-z0-9 -]/g, '').trim())
-    .filter((t) => t.length > 0 && t.length <= 24);
-  const suggestedTags = [...new Set(tags)].slice(0, MAX_TAGS);
+  const suggestedTags = cleanTopics(body?.suggestedTags);
 
   const db = getDatabase();
   const [{ pending }] = await db.sql<{ pending: number }>`
