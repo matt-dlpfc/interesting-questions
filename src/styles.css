@@ -88,7 +88,8 @@ button.selected {
   font-weight: 600;
 }
 
-input {
+input,
+textarea {
   font: inherit;
   color: inherit;
   width: 100%;
@@ -99,7 +100,14 @@ input {
   background: var(--surface);
 }
 
-input:focus-visible {
+textarea {
+  padding: 14px 16px;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+input:focus-visible,
+textarea:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -156,7 +164,8 @@ h1 {
   flex-direction: column;
 }
 
-.gate-message {
+.gate-message,
+.form-message {
   min-height: 1.5em;
   margin: 10px 0;
 }
@@ -291,4 +300,69 @@ h1 {
 .done-body h1 {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 2.4rem;
+}
+
+/* Suggest */
+
+.suggest form {
+  display: flex;
+  flex-direction: column;
+}
+
+.suggest h1 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.8rem;
+}
+
+.suggest form > p.muted {
+  margin: 6px 0 0;
+}
+
+.suggest form .eyebrow {
+  margin-top: 24px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chips button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+}
+
+.submissions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.submissions li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.status {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.status.approved {
+  background: var(--accent);
+  color: var(--accent-text);
 }
