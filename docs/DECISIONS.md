@@ -127,7 +127,7 @@ React + TypeScript, built with Vite, made installable/offline with vite-plugin-p
 
 *Decided: 2026-11-01*
 
-- Netlify publishes the **`main`** branch. `main` always equals what's live.
+- Netlify publishes the **`main`** branch. ~~`main` always equals what's live.~~ Publishing is now manual — see D18.
 - **Nobody commits to `main` directly.** Each piece of work gets its own branch (e.g. `feature/invite-codes`, `docs/…`, `fix/…`).
 - When it's ready, a **Pull Request** is opened into `main`. Netlify builds a **Deploy Preview** for it — a temporary address running exactly that version — without touching the live site.
 - The admin checks the preview (ideally on a phone). **Merging the Pull Request is the "publish" button.**
@@ -161,6 +161,17 @@ React + TypeScript, built with Vite, made installable/offline with vite-plugin-p
 - **Offline:** a device that has entered a code before opens straight away and runs on the questions it last downloaded. The server check happens in the background.
 - **Soft slowdown:** each failed attempt in the last 15 minutes, from anyone, adds 0.4 s to the next check (up to 5 s). Failures are logged with a time only — no IP or device details.
 - **Secrets:** `ADMIN_CODE`, `CODE_PEPPER` and `SESSION_SECRET` live in Netlify's environment variables, with different values for Production and Deploy Previews. See `.env.example`.
+
+## D18 — Publishing is manual (amends D15)
+
+*Decided: 2026-11-01*
+
+- Auto-publishing is **off** in Netlify. Merging a Pull Request into `main` builds it, but **doesn't make it live**.
+- The admin publishes by hand (Netlify → Deploys → pick the newest `main` deploy → **Publish deploy**), only when the work needs it or a big milestone ships (e.g. the end of Phase 2).
+- **Database migrations run when a deploy is published**, not when it's merged. Anything production needs first (e.g. environment variables) must be in place before publishing.
+- Each Pull Request says whether it needs publishing, and what must be set up first.
+
+**Why:** saves Free-plan credits on small changes, and keeps half-finished phases off the live site.
 
 ---
 
