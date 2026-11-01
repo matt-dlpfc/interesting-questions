@@ -1,4 +1,5 @@
-// The admin's screen: review suggested questions (D4) and manage invite codes (D1, D3).
+// The admin's screen: review suggested questions (D4), manage invite codes (D1, D3)
+// and bulk-import the admin's own questions.
 import { useEffect, useState, type FormEvent } from 'react';
 import {
   approveQuestion,
@@ -6,15 +7,17 @@ import {
   getInvites,
   getQueue,
   hideQuestion,
+  importQuestions,
   revokeInvite,
+  type Approval,
   type Invite,
   type PendingQuestion,
   type Result,
 } from './api';
 import { IntensityPicker, SituationChips, parseTopics } from './pickers';
-import type { Intensity, Situation } from './questions';
+import { SITUATIONS, type Intensity, type Situation } from './questions';
 
-type Tab = 'review' | 'codes';
+type Tab = 'review' | 'codes' | 'import';
 
 const OFFLINE = 'Can’t reach the server. Check your connection and try again.';
 
@@ -44,7 +47,7 @@ export function Admin({ onBack }: { onBack: () => void }) {
 
       <h1>Admin</h1>
 
-      <div className="segmented two" role="tablist">
+      <div className="segmented" role="tablist">
         <button
           role="tab"
           aria-selected={tab === 'review'}
@@ -59,7 +62,15 @@ export function Admin({ onBack }: { onBack: () => void }) {
           className={tab === 'codes' ? 'selected' : ''}
           onClick={() => setTab('codes')}
         >
-          Invite codes
+          Codes
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === 'import'}
+          className={tab === 'import' ? 'selected' : ''}
+          onClick={() => setTab('import')}
+        >
+          Import
         </button>
       </div>
 
@@ -75,6 +86,7 @@ export function Admin({ onBack }: { onBack: () => void }) {
       )}
 
       {tab === 'codes' && <Codes />}
+      {tab === 'import' && <Import />}
     </main>
   );
 }
@@ -143,6 +155,78 @@ function ReviewCard({ question, onDone }: { question: PendingQuestion; onDone: (
         </button>
       </div>
     </article>
+  );
+}
+
+// Situations can be written as their id ("just-met") or their label ("Someone new").
+const SITUATION_NAMES = new Map<string, string>(
+  SITUATIONS.flatMap((s) => [
+    [s.id, s.id],
+    [s.label.toLowerCase(), s.id],
+  ]),
+);
+
+// Rows pasted from a spreadsheet: question, situations, depth, topics (tab-separated).
+// A header row is skipped. The server checks everything; this only splits the cells.
+function parseRows(pasted: string): Approval[] {
+  const list = (cell = '') => cell.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  return pasted
+    .split('\n')
+    .map((line) => line.split('\t'))
+    .filter((cells) => cells[0].trim() !== '')
+    .filter((cells, i) => !(i === 0 && ['question', 'text'].includes(cells[0].trim().toLowerCase())))
+    .map(([text, situations, depth = '', topics]) => ({
+      text,
+      situations: list(situations).map((s) => SITUATION_NAMES.get(s) ?? s) as Situation[],
+      intensity: depth.trim().toLowerCase() as Intensity,
+      topics: list(topics),
+    }));
+}
+
+function Import() {
+  const [pasted, setPasted] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const rows = parseRows(pasted);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (busy || rows.length === 0) return;
+    setBusy(true);
+    setMessage('');
+    const res = await importQuestions(rows);
+    setBusy(false);
+    if (!res.ok) return setMessage(failure(res));
+    const { added, skipped } = res.data;
+    setMessage(`Added ${added} to the pool.${skipped ? ` Skipped ${skipped} already there.` : ''}`);
+    setPasted('');
+  }
+
+  return (
+    <form onSubmit={submit} className="card">
+      <label htmlFor="import-rows" className="eyebrow">
+        Paste rows from a spreadsheet
+      </label>
+      <p className="muted small">
+        Four columns: question, situations, depth (light, medium or deep), topics. Separate several situations or
+        topics with commas. Situations: {SITUATIONS.map((s) => s.id).join(', ')}. They go straight into the pool.
+      </p>
+      <textarea
+        id="import-rows"
+        value={pasted}
+        onChange={(e) => setPasted(e.target.value)}
+        rows={8}
+        placeholder={'What made you laugh this week?\tfriends, group\tlight\thumor'}
+        autoCapitalize="none"
+      />
+      <p className="small form-message" role="status">
+        {message}
+      </p>
+      <button type="submit" className="primary" disabled={busy || rows.length === 0}>
+        {busy ? 'Importing…' : `Import ${rows.length || ''} question${rows.length === 1 ? '' : 's'}`}
+      </button>
+    </form>
   );
 }
 

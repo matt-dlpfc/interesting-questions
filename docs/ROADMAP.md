@@ -17,7 +17,7 @@
 - Database; starter questions imported into it
 - Shared ratings (one per member per question)
 - Submit a question → admin approval queue
-- Admin screen: review queue, create/revoke invite codes
+- Admin screen: review queue, create/revoke invite codes, bulk-import the admin's own questions
 - "My submissions" status for each member
 
 ## Phase 3 — Playlists

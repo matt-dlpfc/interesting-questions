@@ -97,6 +97,12 @@ export const hideQuestion = (id: string) =>
     body: JSON.stringify({ action: 'hide' }),
   });
 
+export const importQuestions = (questions: Approval[]) =>
+  call<{ added: number; skipped: number }>('/api/admin/questions', {
+    method: 'POST',
+    body: JSON.stringify({ questions }),
+  });
+
 export const getInvites = () => call<{ codes: Invite[] }>('/api/admin/codes');
 
 export const createInvite = (note: string) =>
